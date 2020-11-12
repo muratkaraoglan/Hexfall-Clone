@@ -34,7 +34,6 @@ public class Manage : MonoBehaviour
         {
             Destroy(this);
         }
-
     }
 
     List<Hexagon> colListH;
@@ -44,7 +43,7 @@ public class Manage : MonoBehaviour
     void Start()
     {
         
-        bombBornScore = 100;
+        bombBornScore = 200;
         score = 0;
         sTxt.text = score.ToString();
         hexListH = new List<List<Hexagon>>();
@@ -60,6 +59,7 @@ public class Manage : MonoBehaviour
     public bool turn = false;
     public bool clockWise = true;
     bool runOne = true;
+
     void Update()
     {
         if ( gameOver )
@@ -74,8 +74,9 @@ public class Manage : MonoBehaviour
                 CheckExplosion(clockWise);
                 runOne = false;
             }
-            if ( Input.GetMouseButtonDown(0) && !explosion )
+            if ( Input.GetMouseButtonDown(0) && !explosion && !selection )
             {
+                Debug.Log(Input.mousePosition);
                 DestroyOutSide();
                 selection = true;
                 Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -125,6 +126,57 @@ public class Manage : MonoBehaviour
                 //go.GetComponent<Hexagon>().bombText.text = (--go.GetComponent<Hexagon>().bombTimer).ToString();
             }
 
+            if (Input.touchCount>0 && !explosion && !selection) 
+            {
+                Touch touch = Input.GetTouch(0);
+                Debug.Log(touch.position);
+                DestroyOutSide();
+                selection = true;
+                Vector3 pos3D = Camera.main.ScreenToWorldPoint(touch.position);
+                Vector2 pos2D = new Vector2(pos3D.x, pos3D.y);
+                //Debug.DrawLine(mousePos, Vector3.forward,Color.red,5);
+                RaycastHit2D hit = Physics2D.Raycast(pos3D, Vector3.forward, 30);
+                if ( hit.collider != null )
+                {
+                    Vector2[] neighbours = hit.collider.gameObject.GetComponent<Hexagon>().GetNeighbour();
+                    //seçilen hex
+                    selectedHexagon = hit.collider.gameObject;
+                    List<float> distanceList = new List<float>();
+                    int NIndex1, NIndex2;
+                    float distance;
+                    for ( int i = 0; i < neighbours.Length; i++ )
+                    {
+                        distance = Vector3.Distance(pos2D, neighbours[i]);
+                        distanceList.Add(distance);
+                        //Debug.Log(distance);
+                    }
+                    //seçilen hex'in tıklanılan pozisyona göre en yakın komşularının pozisyonları için neighbours dizisindeki indislerinin belirlenmesi
+                    var min1 = distanceList.Min();
+                    NIndex1 = distanceList.IndexOf(min1);
+                    //distanceList[NIndex1] = 9f;
+
+                    //var min2 = distanceList.Min();
+                    //NIndex2 = distanceList.IndexOf(min2);
+
+                    //seçilen hex'in komşuları
+                    Neigh1 = FindGameObject(neighbours[NIndex1]);
+                    if ( NIndex1 == 5 )
+                    {
+                        Neigh2 = FindGameObject(neighbours[0]);
+                    }
+                    else 
+                    {
+                        Neigh2 = FindGameObject(neighbours[NIndex1+1]);
+                    }
+                   
+                    //Seçilen hex'lerin arka planlarının değiştirilmesi
+                    selectedBG1 = Instantiate(selectedBGPrefab, selectedHexagon.transform.position, Quaternion.identity);
+                    selectedBG2 = Instantiate(selectedBGPrefab, Neigh1.transform.position, Quaternion.identity);
+                    selectedBG3 = Instantiate(selectedBGPrefab, Neigh2.transform.position, Quaternion.identity);
+
+                    StartCoroutine(RotateSelectedHexagons());
+                }
+            }
         }
     }
     IEnumerator RotateSelectedHexagons()
@@ -188,21 +240,9 @@ public class Manage : MonoBehaviour
         DestroyOutSide();
     }
 
-    void RotateExplosion(Hexagon h1)
+    void Refresh() 
     {
-        Vector2[] h1N = h1.GetNeighbour();
-
-        RaycastHit2D hitTop = Physics2D.Raycast(h1N[0], Vector3.forward, 30f);
-        RaycastHit2D hitTRight = Physics2D.Raycast(h1N[1], Vector3.forward, 30f);
-        RaycastHit2D hitBRight = Physics2D.Raycast(h1N[2], Vector3.forward, 30f);
-        RaycastHit2D hitBottom = Physics2D.Raycast(h1N[3], Vector3.forward, 30f);
-        RaycastHit2D hitBLeft = Physics2D.Raycast(h1N[4], Vector3.forward, 30f);
-        RaycastHit2D hitTLeft = Physics2D.Raycast(h1N[5], Vector3.forward, 30f);
-
-        if ( clockWise && !explosion )
-        {
-
-        }
+            
     }
 
     void DestroyOutSide()
@@ -378,7 +418,7 @@ public class Manage : MonoBehaviour
         explosion = true;
         expList = expList.OrderByDescending(y => y.GetYGrid()).ToList();//yukarıdan asagiya dogru yok etme
         //Yok etme
-        Debug.Log("Destroy Count =>" + expList.Count);
+        //Debug.Log("Destroy Count =>" + expList.Count);
         foreach ( var item in expList )
         {
             int x = item.GetXGrid();
